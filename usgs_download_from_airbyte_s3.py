@@ -12,8 +12,8 @@ processed_log = "processed_keys.txt"
 
 # Config
 source_bucket = os.getenv("S3_BUCKET_NAME")
-# bronze_prefix = "airbyte/miami-dade/" # change this to the correct prefix from which to grab the data
-download_prefix = "airbyte/usgs-topos/"
+# bronze_prefix = "bronze/airbyte/miami-dade/" # change this to the correct prefix from which to grab the data
+download_prefix = "bronze/airbyte/usgs-topos/"
 region = os.getenv("AWS_DEFAULT_REGION")
 
 s3 = boto3.client("s3", region_name=region)
@@ -79,7 +79,7 @@ def process_json_file(obj_key):
 
 
 def main():
-    prefixes = ["airbyte/miami-dade/", "airbyte/puerto-rico/"]
+    prefixes = ["bronze/airbyte/miami-dade/", "bronze/airbyte/puerto-rico/"]
 
     for prefix in prefixes:
         print(f"🔍 Listing objects in s3://{source_bucket}/{prefix}")
