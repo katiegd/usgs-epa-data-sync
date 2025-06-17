@@ -71,7 +71,7 @@ def process_json_file(obj_key):
                     continue
 
                 filename = os.path.basename(urlparse(url).path)
-                source_folder = obj_key.split('/')[1]  # e.g., 'miami-dade' or 'puerto-rico'
+                source_folder = obj_key.split('/')[2]  # e.g., 'miami-dade' or 'puerto-rico'
                 s3_key = f"{download_prefix}{source_folder}/{filename}"
 
                 if already_uploaded(s3_key):
