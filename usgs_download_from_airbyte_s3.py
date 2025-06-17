@@ -13,7 +13,10 @@ from urllib.parse import urlparse
 from io import BytesIO
 import os
 from dotenv import load_dotenv
+import sys
 import csv
+
+csv.field_size_limit(sys.maxsize)
 
 load_dotenv()
 processed_log = "processed_keys.txt"
@@ -119,7 +122,7 @@ def main():
     for prefix in prefixes:
         print(f"🔍 Listing objects in s3://{source_bucket}/{prefix}")
         for key in list_objects(source_bucket, prefix):
-            if not (key.endswith(".jsonl") or key.endswith(".ndjson") or key.endswith(".csv")):
+            if not (key.endswith(".jsonl") or key.endswith(".ndjson")):
                 continue
             print(f"🔍 Processing: {key}")
             if has_been_processed(key):
