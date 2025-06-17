@@ -1,3 +1,11 @@
+# python3 usgs_download_from_airbyte_s3.py
+# This script downloads the USGS topo data from the Airbyte S3 bucket and uploads it to the USGS topo data bucket
+# It also logs the keys of the files that have been processed to a file called processed_keys.txt
+# It then uses the processed_keys.txt file to skip files that have already been processed
+# It also uses the processed_keys.txt file to skip files that have already been uploaded to the USGS topo data bucket
+# It also uses the processed_keys.txt file to skip files that have already been downloaded from the Airbyte S3 bucket
+# It also uses the processed_keys.txt file to skip files that have already been uploaded to the USGS topo data bucket
+
 import boto3
 import json
 import requests
@@ -5,6 +13,7 @@ from urllib.parse import urlparse
 from io import BytesIO
 import os
 from dotenv import load_dotenv
+import csv
 
 load_dotenv()
 processed_log = "processed_keys.txt"
@@ -77,6 +86,32 @@ def process_json_file(obj_key):
             print(f"⚠️ Failed to process line: {e}")
             continue
 
+def process_csv_file(obj_key):
+    print(f"🔍 Reading CSV: {obj_key}")
+    response = s3.get_object(Bucket=source_bucket, Key=obj_key)
+    body = response["Body"].read().decode("utf-8")
+
+    reader = csv.DictReader(body.splitlines())
+    for row in reader:
+        url = row.get("downloadURL") or row.get("download_url")
+        if not url:
+            continue
+
+        filename = os.path.basename(urlparse(url).path)
+        source_folder = obj_key.split('/')[1]  # e.g., 'miami-dade' or 'puerto-rico'
+        s3_key = f"{download_prefix}{source_folder}/{filename}"
+
+        if already_uploaded(s3_key):
+            print(f"✅ Already exists: {filename}")
+            continue
+
+        print(f"⬇️ Downloading: {filename}")
+        r = requests.get(url, stream=True)
+        r.raise_for_status()
+
+        s3.upload_fileobj(BytesIO(r.content), source_bucket, s3_key)
+        print(f"🚀 Uploaded to s3://{source_bucket}/{s3_key}")
+
 
 def main():
     prefixes = ["bronze/airbyte/miami-dade/", "bronze/airbyte/puerto-rico/"]
@@ -84,11 +119,15 @@ def main():
     for prefix in prefixes:
         print(f"🔍 Listing objects in s3://{source_bucket}/{prefix}")
         for key in list_objects(source_bucket, prefix):
-            if not key.endswith(".jsonl") and not key.endswith(".ndjson"):
+            if not (key.endswith(".jsonl") or key.endswith(".ndjson") or key.endswith(".csv")):
                 continue
+            print(f"🔍 Processing: {key}")
             if has_been_processed(key):
                 continue
-            process_json_file(key)
+            if key.endswith(".csv"):
+                process_csv_file(key)
+            else:
+                process_json_file(key)
             mark_as_processed(key)
 
 
